@@ -1,0 +1,31 @@
+{
+  "display": {
+    "icon": {
+      "id": "simplest_watering_can:watering_can"
+    },
+    "title": {
+      "translate": "advancements.simplest_watering_can.get_watering_can.title"
+    },
+    "description": {
+      "translate": "advancements.simplest_watering_can.get_watering_can.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false,
+  },
+  "parent": "minecraft:story/obtainy_armor",
+  "criteria": {
+    "get_watering_can": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "simplest_watering_can:watering_can"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["get_watering_can"]]
+}
