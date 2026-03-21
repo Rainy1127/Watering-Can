@@ -37,17 +37,17 @@ displayName="Simplest Watering Cans" #mandatory
 
 # A file name (in the root of the mod JAR) containing a logo for display
 #logoFile="examplemod.png" #optional
+logoFile="logo.png"
 
 # A text field displayed in the mod UI
 #credits="" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
 #authors=""
+authors="Team Solar"
 
 # The description text for the mod (multi line!) (#mandatory)
-description = '''
-        Watering cans that hydrate and fertilize your crops.
-    '''
+description = '''Watering cans that hydrate and fertilize your crops.'''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
 #[[mixins]]

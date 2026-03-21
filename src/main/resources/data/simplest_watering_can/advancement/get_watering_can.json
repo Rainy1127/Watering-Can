@@ -12,9 +12,9 @@
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": true,
-    "hidden": false,
+    "hidden": false
   },
-  "parent": "minecraft:story/obtainy_armor",
+  "parent": "minecraft:husbandry/root",
   "criteria": {
     "get_watering_can": {
       "trigger": "minecraft:inventory_changed",
