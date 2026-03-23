@@ -1,0 +1,9 @@
+{
+  "item.simplest_watering_can.watering_can": "Лейка",
+  "item.simplest_watering_can.watering_can.filled": "Лейка наполнена!",
+  "item.simplest_watering_can.watering_can.tooltip.water": "Вода: %s/%s",
+  "item.simplest_watering_can.watering_can.tooltip.bonemeal": "Костная мука: %s/%s",
+  "item.simplest_watering_can.watering_can.tooltip.empty": "Пусто! Используйте по воде для наполнения.",
+  "advancements.simplest_watering_can.get_watering_can.title": "Мокрое место",
+  "advancements.simplest_watering_can.get_watering_can.description": "Получите лейку"
+}

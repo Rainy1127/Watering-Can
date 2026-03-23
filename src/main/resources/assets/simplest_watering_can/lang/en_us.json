@@ -1,0 +1,9 @@
+{
+  "item.simplest_watering_can.watering_can": "Watering Can",
+  "item.simplest_watering_can.watering_can.filled": "Watering Can filled!",
+  "item.simplest_watering_can.watering_can.tooltip.water": "Water: %s/%s",
+  "item.simplest_watering_can.watering_can.tooltip.bonemeal": "Bone Meal: %s/%s",
+  "item.simplest_watering_can.watering_can.tooltip.empty": "Empty! Use on water to refill.",
+  "advancements.simplest_watering_can.get_watering_can.title": "Water You Waiting For?",
+  "advancements.simplest_watering_can.get_watering_can.description": "Get a Watering Can"
+}
