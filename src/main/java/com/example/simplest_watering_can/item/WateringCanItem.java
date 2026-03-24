@@ -165,17 +165,28 @@ public class WateringCanItem extends Item {
         BlockState targetState = level.getBlockState(targetPos);
         if (targetState.getBlock() instanceof FarmBlock) {
             if (!level.isClientSide()) {
-                level.setBlock(targetPos,
-                        targetState.setValue(BlockStateProperties.MOISTURE, 7), 3);
+                int moisturized = 0;
+                for (int dx = -RADIUS; dx <= RADIUS; dx++) {
+                    for (int dz = -RADIUS; dz <= RADIUS; dz++) {
+                        BlockPos pos = targetPos.offset(dx, 0, dz);
+                        BlockState state = level.getBlockState(pos);
+                        if (state.getBlock() instanceof FarmBlock) {
+                            level.setBlock(pos,
+                                    state.setValue(BlockStateProperties.MOISTURE, 7), 3);
+                            moisturized++;
+                            if (level instanceof ServerLevel sl) {
+                                sl.sendParticles(ParticleTypes.FALLING_WATER,
+                                        pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5,
+                                        4, 0.3, 0.05, 0.3, 0.02);
+                            }
+                        }
+                    }
+                }
+                if (moisturized == 0) return InteractionResultHolder.fail(stack);
                 setWater(stack, getWater(stack) - 1);
                 setLastUsed(stack, level.getGameTime());
                 level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
                         SoundSource.BLOCKS, 0.6f, 1.2f);
-                if (level instanceof ServerLevel sl) {
-                    sl.sendParticles(ParticleTypes.FALLING_WATER,
-                            targetPos.getX() + 0.5, targetPos.getY() + 1.05, targetPos.getZ() + 0.5,
-                            8, 0.4, 0.05, 0.4, 0.03);
-                }
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
