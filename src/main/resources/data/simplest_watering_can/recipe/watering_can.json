@@ -1,21 +1,17 @@
 {
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
+  "key": {
+    "A": "minecraft:iron_ingot",
+    "B": "minecraft:bucket"
+  },
   "pattern": [
     "AA ",
     " B ",
     "   "
   ],
-  "key": {
-    "A": {
-      "item": "minecraft:iron_ingot"
-    },
-    "B": {
-      "item": "minecraft:bucket"
-    }
-  },
   "result": {
-    "id": "simplest_watering_can:watering_can",
-    "count": 1
+    "count": 1,
+    "id": "simplest_watering_can:watering_can"
   }
 }
