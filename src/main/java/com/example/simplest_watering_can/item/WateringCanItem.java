@@ -274,23 +274,7 @@ public class WateringCanItem extends Item {
                     SoundSource.BLOCKS, 0.8f, 1.1f);
 
         } else {
-            // Клиентские частицы
-            for (int dx = -RADIUS; dx <= RADIUS; dx++) {
-                for (int dz = -RADIUS; dz <= RADIUS; dz++) {
-                    BlockPos pos = targetPos.offset(dx, 0, dz);
-                    for (int i = 0; i < 4; i++) {
-                        double ox = (level.random.nextDouble() - 0.5) * 0.8;
-                        double oz = (level.random.nextDouble() - 0.5) * 0.8;
-                        level.addParticle(ParticleTypes.FALLING_WATER,
-                                pos.getX() + 0.5 + ox,
-                                pos.getY() + 1.1,
-                                pos.getZ() + 0.5 + oz,
-                                0, -0.08, 0);
-                    }
-                }
-            }
         }
-
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
