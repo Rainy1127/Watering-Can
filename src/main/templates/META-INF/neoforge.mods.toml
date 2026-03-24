@@ -5,10 +5,8 @@
 # Find more information on toml format here:  https://github.com/toml-lang/toml
 
 # The name of the mod loader type to load - for regular FML @Mod mods it should be javafml
-modLoader="javafml" #mandatory
 
 # A version range to match for said mod loader - for regular FML @Mod it will be the FML version. This is currently 2.
-loaderVersion="${loader_version_range}" #mandatory
 
 # The license for you mod. This is mandatory metadata and allows for easier comprehension of your redistributive properties.
 # Review your options at https://choosealicense.com/. All rights reserved is the default copyright stance, and is thus the default here.
@@ -61,7 +59,7 @@ description = '''Watering cans that hydrate and fertilize your crops.'''
 # The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
 
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
-[[dependencies.wateringcan]] #optional
+[[dependencies.simplest_watering_can]] #optional
     # the modid of the dependency
     modId="neoforge" #mandatory
     # The type of the dependency. Can be one of "required", "optional", "incompatible" or "discouraged" (case insensitive).
@@ -80,7 +78,7 @@ description = '''Watering cans that hydrate and fertilize your crops.'''
     side="BOTH"
 
 # Here's another dependency
-[[dependencies.wateringcan]]
+[[dependencies.simplest_watering_can]]
     modId="minecraft"
     type="required"
     # This version range declares a minimum of the current minecraft version up to but not including the next major version
