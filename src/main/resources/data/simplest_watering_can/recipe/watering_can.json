@@ -12,6 +12,7 @@
     "B": {
       "item": "minecraft:bucket"
     }
+
   },
   "result": {
     "id": "simplest_watering_can:watering_can",
