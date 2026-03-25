@@ -2,13 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
-    "A": "minecraft:iron_ingot",
+    "A": "#c:ingots/iron",
     "B": "minecraft:bucket"
   },
   "pattern": [
-    "AA ",
-    " B ",
-    "   "
+    "AA",
+    " B"
   ],
   "result": {
     "count": 1,
