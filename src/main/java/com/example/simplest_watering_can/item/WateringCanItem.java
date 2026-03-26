@@ -12,7 +12,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -20,10 +19,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseFireBlock;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.BonemealableBlock;
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.FluidState;
@@ -163,8 +159,23 @@ public class WateringCanItem extends Item {
 
         // -- Увлажнение пашни: ПКМ по farmland ----------------------
         BlockState targetState = level.getBlockState(targetPos);
+        boolean isFarmLand = targetState.getBlock() instanceof FarmBlock;
+        boolean isFire = targetState.getBlock() instanceof BaseFireBlock
+                || targetState.is(Blocks.CAMPFIRE)
+                || targetState.is(Blocks.SOUL_CAMPFIRE);
+        boolean isCrop = false;
+        BlockState belowState = level.getBlockState(targetPos.below());
+        if (targetState.getBlock() instanceof BonemealableBlock b
+            && b.isValidBonemealTarget(level, targetPos, targetState)
+            && belowState.getBlock() instanceof FarmBlock) {
+            isCrop = true;
+        }
+        if (!isFarmLand && !isFire && !isCrop) {
+            return InteractionResultHolder.fail(stack);
+        }
         if (targetState.getBlock() instanceof FarmBlock) {
             if (!level.isClientSide()) {
+                boolean hasBone = getBonemeal(stack) > 0;
                 int moisturized = 0;
                 for (int dx = -RADIUS; dx <= RADIUS; dx++) {
                     for (int dz = -RADIUS; dz <= RADIUS; dz++) {
@@ -183,9 +194,11 @@ public class WateringCanItem extends Item {
                     }
                 }
                 if (moisturized == 0) return InteractionResultHolder.fail(stack);
-                setWater(stack, getWater(stack) - 1);
+                if (hasBone) {
+                    setWater(stack, getWater(stack) - 1);
+                }
                 setLastUsed(stack, level.getGameTime());
-                level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
+                level.playSound(null, targetPos,SoundEvents.WATER_AMBIENT,
                         SoundSource.BLOCKS, 0.6f, 1.2f);
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
@@ -255,19 +268,10 @@ public class WateringCanItem extends Item {
 
             if (!hasAnyCrop) return InteractionResultHolder.fail(stack);
 
-// Вода тратится всегда если есть грядка
+            // Вода тратится всегда если есть грядка
             setWater(stack, getWater(stack) - 1);
-// Мука тратится только если хоть что-то выросло
+            // Мука тратится только если хоть что-то выросло
             if (hasBonemeal && anyGrew) setBonemeal(stack, bonemealInCan - 1);
-            setLastUsed(stack, level.getGameTime());
-
-            // Ничего не нашли — не тратим ресурсы
-            if (!hasAnyCrop) return InteractionResultHolder.fail(stack);
-
-            // -1 вода за клик
-            setWater(stack, getWater(stack) - 1);
-            // -1 мука за клик если была
-            if (hasBonemeal) setBonemeal(stack, bonemealInCan - 1);
             setLastUsed(stack, level.getGameTime());
 
             level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
