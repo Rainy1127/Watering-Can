@@ -149,29 +149,46 @@ public class WateringCanItem extends Item {
 
         // ── Увлажнение пашни 3x3 ──────────────────────────────────────────────
         BlockState targetState = level.getBlockState(targetPos);
+        boolean isFarmLand = targetState.getBlock() instanceof FarmBlock;
+        boolean isFire = targetState.getBlock() instanceof BaseFireBlock
+                || targetState.is(Blocks.CAMPFIRE)
+                || targetState.is(Blocks.SOUL_CAMPFIRE);
+        boolean isCrop = false;
+        BlockState belowState = level.getBlockState(targetPos.below());
+        if (targetState.getBlock() instanceof BonemealableBlock b
+                && b.isValidBonemealTarget(level, targetPos, targetState)
+                && belowState.getBlock() instanceof FarmBlock) {
+            isCrop = true;
+        }
+        if (!isFarmLand && !isFire && !isCrop) {
+            return InteractionResult.FAIL;
+        }
         if (targetState.getBlock() instanceof FarmBlock) {
             if (!level.isClientSide()) {
+                boolean hasBone = getBonemeal(stack) > 0;
                 int moisturized = 0;
                 for (int dx = -RADIUS; dx <= RADIUS; dx++) {
-                        for (int dz = -RADIUS; dz <= RADIUS; dz++) {
-                            BlockPos pos = targetPos.offset(dx, 0, dz);
-                            BlockState state = level.getBlockState(pos);
-                            if (state.getBlock() instanceof FarmBlock) {
-                                level.setBlock(pos,
-                                        state.setValue(BlockStateProperties.MOISTURE, 7), 3);
-                                moisturized++;
-                                if (level instanceof ServerLevel sl) {
-                                    sl.sendParticles(ParticleTypes.FALLING_WATER,
-                                            pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5,
-                                            4, 0.3, 0.05, 0.3, 0.02);
+                    for (int dz = -RADIUS; dz <= RADIUS; dz++) {
+                        BlockPos pos = targetPos.offset(dx, 0, dz);
+                        BlockState state = level.getBlockState(pos);
+                        if (state.getBlock() instanceof FarmBlock) {
+                            level.setBlock(pos,
+                                    state.setValue(BlockStateProperties.MOISTURE, 7), 3);
+                            moisturized++;
+                            if (level instanceof ServerLevel sl) {
+                                sl.sendParticles(ParticleTypes.FALLING_WATER,
+                                        pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5,
+                                        4, 0.3, 0.05, 0.3, 0.02);
                             }
                         }
                     }
                 }
                 if (moisturized == 0) return InteractionResult.FAIL;
-                setWater(stack, getWater(stack) - 1);
+                if (hasBone) {
+                    setWater(stack, getWater(stack) - 1);
+                }
                 setLastUsed(stack, level.getGameTime());
-                level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
+                level.playSound(null, targetPos,SoundEvents.WATER_AMBIENT,
                         SoundSource.BLOCKS, 0.6f, 1.2f);
             }
             return InteractionResult.SUCCESS;
