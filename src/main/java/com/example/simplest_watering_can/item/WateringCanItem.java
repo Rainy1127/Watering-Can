@@ -19,6 +19,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -26,19 +27,17 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
-
-import javax.swing.text.html.parser.Entity;
 import java.util.List;
 
 public class WateringCanItem extends Item {
 
-    // ── Константы ──────────────────────────────────────────────────────────
-    public static final int MAX_WATER       = 16;  // макс. воды
-    public static final int MAX_BONEMEAL    = 16;  // макс. костной муки
-    private static final int COOLDOWN_TICKS = 20;  // кулдаун между кликами
-    private static final float GROW_CHANCE  = 0.5f; // шанс роста без муки
-    private static final int RADIUS         = 1;   // 3x3
+    public static final int MAX_WATER       = 16;
+    public static final int MAX_BONEMEAL    = 16;
+    private static final int COOLDOWN_TICKS = 20;
+    private static final float GROW_CHANCE  = 0.5f;
+    private static final int RADIUS         = 1;
 
     private static final String NBT_WATER    = "WaterLevel";
     private static final String NBT_BONEMEAL = "BonemealLevel";
@@ -48,10 +47,6 @@ public class WateringCanItem extends Item {
         super(properties);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  ВСПОМОГАТЕЛЬНЫЙ МЕТОД — читает весь тег не затирая другие поля
-    // ══════════════════════════════════════════════════════════════════════
-
     private static CompoundTag getFullTag(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         return data != null ? data.copyTag() : new CompoundTag();
@@ -60,10 +55,6 @@ public class WateringCanItem extends Item {
     private static void saveTag(ItemStack stack, CompoundTag tag) {
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  ВОДА
-    // ══════════════════════════════════════════════════════════════════════
 
     public static int getWater(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
@@ -80,10 +71,6 @@ public class WateringCanItem extends Item {
         return (float) getWater(stack) / MAX_WATER;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  КОСТНАЯ МУКА
-    // ══════════════════════════════════════════════════════════════════════
-
     public static int getBonemeal(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         return data != null ? data.copyTag().getInt(NBT_BONEMEAL) : 0;
@@ -94,10 +81,6 @@ public class WateringCanItem extends Item {
         tag.putInt(NBT_BONEMEAL, Math.max(0, Math.min(MAX_BONEMEAL, amount)));
         saveTag(stack, tag);
     }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  КУЛДАУН
-    // ══════════════════════════════════════════════════════════════════════
 
     private static long getLastUsed(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
@@ -110,20 +93,46 @@ public class WateringCanItem extends Item {
         saveTag(stack, tag);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  ПКМ — заправка водой / мукой / полив
-    // ══════════════════════════════════════════════════════════════════════
-
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        HitResult hit = player.pick(5.0, 0.0f, false);
 
-        if (!(hit instanceof BlockHitResult blockHit)) return InteractionResultHolder.fail(stack);
+        // ── Raycast с поддержкой жидкостей ───────────────────────────────
+        Vec3 eyePos = player.getEyePosition();
+        Vec3 lookVec = player.getLookAngle();
+        Vec3 endPos = eyePos.add(lookVec.scale(5.0));
 
-        BlockPos targetPos = blockHit.getBlockPos();
+        // Сначала проверяем жидкости
+        HitResult fluidHit = level.clip(new ClipContext(
+                eyePos, endPos,
+                ClipContext.Block.OUTLINE,
+                ClipContext.Fluid.SOURCE_ONLY,
+                player));
 
-        // ── Заправка водой: ПКМ по источнику воды ────────────────────────
+        // Потом проверяем блоки
+        HitResult blockHit = level.clip(new ClipContext(
+                eyePos, endPos,
+                ClipContext.Block.OUTLINE,
+                ClipContext.Fluid.NONE,
+                player));
+
+        // Определяем что ближе — жидкость или блок
+        HitResult hit = fluidHit;
+        if (fluidHit.getType() == HitResult.Type.MISS) {
+            hit = blockHit;
+        } else if (blockHit.getType() != HitResult.Type.MISS) {
+            // Берём то что ближе к игроку
+            double distFluid = fluidHit.getLocation().distanceToSqr(eyePos);
+            double distBlock = blockHit.getLocation().distanceToSqr(eyePos);
+            hit = distFluid <= distBlock ? fluidHit : blockHit;
+        }
+
+        if (!(hit instanceof BlockHitResult blockHitResult))
+            return InteractionResultHolder.fail(stack);
+
+        BlockPos targetPos = blockHitResult.getBlockPos();
+
+        // ── Заправка водой ────────────────────────────────────────────────
         FluidState fluid = level.getFluidState(targetPos);
         if (fluid.is(FluidTags.WATER) && fluid.isSource()) {
             if (getWater(stack) < MAX_WATER) {
@@ -157,25 +166,28 @@ public class WateringCanItem extends Item {
             }
         }
 
-        // -- Увлажнение пашни: ПКМ по farmland ----------------------
         BlockState targetState = level.getBlockState(targetPos);
-        boolean isFarmLand = targetState.getBlock() instanceof FarmBlock;
+
+        // ── Проверка допустимых целей ─────────────────────────────────────
+        boolean isFarmland = targetState.getBlock() instanceof FarmBlock;
         boolean isFire = targetState.getBlock() instanceof BaseFireBlock
                 || targetState.is(Blocks.CAMPFIRE)
                 || targetState.is(Blocks.SOUL_CAMPFIRE);
         boolean isCrop = false;
         BlockState belowState = level.getBlockState(targetPos.below());
         if (targetState.getBlock() instanceof BonemealableBlock b
-            && b.isValidBonemealTarget(level, targetPos, targetState)
-            && belowState.getBlock() instanceof FarmBlock) {
+                && b.isValidBonemealTarget(level, targetPos, targetState)
+                && belowState.getBlock() instanceof FarmBlock) {
             isCrop = true;
         }
-        if (!isFarmLand && !isFire && !isCrop) {
+
+        if (!isFarmland && !isFire && !isCrop) {
             return InteractionResultHolder.fail(stack);
         }
-        if (targetState.getBlock() instanceof FarmBlock) {
+
+        // ── Увлажнение пашни 3×3 ──────────────────────────────────────────
+        if (isFarmland) {
             if (!level.isClientSide()) {
-                boolean hasBone = getBonemeal(stack) > 0;
                 int moisturized = 0;
                 for (int dx = -RADIUS; dx <= RADIUS; dx++) {
                     for (int dz = -RADIUS; dz <= RADIUS; dz++) {
@@ -194,27 +206,25 @@ public class WateringCanItem extends Item {
                     }
                 }
                 if (moisturized == 0) return InteractionResultHolder.fail(stack);
-                if (hasBone) {
-                    setWater(stack, getWater(stack) - 1);
-                }
+                // Вода тратится всегда при увлажнении
+                setWater(stack, getWater(stack) - 1);
                 setLastUsed(stack, level.getGameTime());
-                level.playSound(null, targetPos,SoundEvents.WATER_AMBIENT,
+                level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
                         SoundSource.BLOCKS, 0.6f, 1.2f);
             }
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
-        // -- Тушение огня и костра: ПКМ по fire/campfire ------------
-        if (targetState.getBlock() instanceof BaseFireBlock
-                || targetState.is(Blocks.CAMPFIRE)
-                || targetState.is(Blocks.SOUL_CAMPFIRE)) {
+        // ── Тушение огня и костра ─────────────────────────────────────────
+        if (isFire) {
             if (!level.isClientSide()) {
                 if (targetState.is(Blocks.CAMPFIRE) || targetState.is(Blocks.SOUL_CAMPFIRE)) {
-                        level.setBlock(targetPos,
-                                targetState.setValue(BlockStateProperties.LIT, false), 3);
+                    level.setBlock(targetPos,
+                            targetState.setValue(BlockStateProperties.LIT, false), 3);
                 } else {
                     level.removeBlock(targetPos, false);
-                    level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class, new AABB(targetPos).inflate(1))
+                    level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class,
+                                    new AABB(targetPos).inflate(1))
                             .forEach(e -> e.clearFire());
                 }
                 setWater(stack, getWater(stack) - 1);
@@ -230,10 +240,10 @@ public class WateringCanItem extends Item {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
-        // ── Ищем все растения в 3×3 ───────────────────────────────────────
+        // ── Полив растений 3×3 ────────────────────────────────────────────
         if (!level.isClientSide()) {
             ServerLevel serverLevel = (ServerLevel) level;
-            int bonemealInCan = getBonemeal(stack);
+            int bonemealInCan   = getBonemeal(stack);
             boolean hasBonemeal = bonemealInCan > 0;
             boolean hasAnyCrop  = false;
             boolean anyGrew     = false;
@@ -246,12 +256,13 @@ public class WateringCanItem extends Item {
                     if (!(state.getBlock() instanceof BonemealableBlock bonemealable)) continue;
                     if (!bonemealable.isValidBonemealTarget(serverLevel, pos, state)) continue;
 
-                    hasAnyCrop = true;
+                    // Только посевы на farmland
+                    BlockState below = serverLevel.getBlockState(pos.below());
+                    if (!(below.getBlock() instanceof FarmBlock)) continue;
 
-                    // Без муки — вообще не растёт
+                    hasAnyCrop = true;
                     if (!hasBonemeal) continue;
 
-                    // С мукой — 50/50
                     if (serverLevel.random.nextFloat() < GROW_CHANCE) {
                         bonemealable.performBonemeal(serverLevel, serverLevel.random, pos, state);
                         anyGrew = true;
@@ -268,63 +279,38 @@ public class WateringCanItem extends Item {
 
             if (!hasAnyCrop) return InteractionResultHolder.fail(stack);
 
-            // Вода тратится всегда если есть грядка
             setWater(stack, getWater(stack) - 1);
-            // Мука тратится только если хоть что-то выросло
             if (hasBonemeal && anyGrew) setBonemeal(stack, bonemealInCan - 1);
             setLastUsed(stack, level.getGameTime());
-
             level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
                     SoundSource.BLOCKS, 0.8f, 1.1f);
-
-        } else {
         }
+
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  Shift+ПКМ по лейке в инвентаре — загрузка костной муки
-    //  Вызывается через событие ContainerScreenEvent или overrideStackedOnOther
-    // ══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Вызывается когда игрок кликает стопкой предметов ПО лейке в инвентаре.
-     * Если это костная мука — загружаем в лейку.
-     */
     @Override
     public boolean overrideOtherStackedOnMe(ItemStack can, ItemStack incoming,
                                             net.minecraft.world.inventory.Slot slot,
                                             net.minecraft.world.inventory.ClickAction action,
                                             Player player,
                                             net.minecraft.world.entity.SlotAccess access) {
-        // Только ПКМ клик (action == ClickAction.SECONDARY)
         if (action != net.minecraft.world.inventory.ClickAction.SECONDARY) return false;
-        // Только костная мука
         if (!incoming.is(Items.BONE_MEAL)) return false;
 
         int current = getBonemeal(can);
         if (current >= MAX_BONEMEAL) return false;
 
-        // Сколько можем принять
-        int space    = MAX_BONEMEAL - current;
-        int toAdd    = Math.min(space, incoming.getCount());
-
+        int space = MAX_BONEMEAL - current;
+        int toAdd = Math.min(space, incoming.getCount());
         setBonemeal(can, current + toAdd);
         incoming.shrink(toAdd);
-
-        // Звук
         player.playSound(SoundEvents.BONE_MEAL_USE, 1.0f, 1.0f);
         return true;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  ПРОГРЕСС-БАР ПОД ИКОНКОЙ (вода — синий)
-    // ══════════════════════════════════════════════════════════════════════
-
     @Override
-    public boolean isBarVisible(ItemStack stack) {
-        return true;
-    }
+    public boolean isBarVisible(ItemStack stack) { return true; }
 
     @Override
     public int getBarWidth(ItemStack stack) {
@@ -336,10 +322,6 @@ public class WateringCanItem extends Item {
         return getWater(stack) <= 0 ? 0xFF4444 : 0x2255FF;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  TOOLTIP
-    // ══════════════════════════════════════════════════════════════════════
-
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context,
                                 List<Component> tooltipComponents, TooltipFlag flag) {
@@ -349,13 +331,11 @@ public class WateringCanItem extends Item {
         tooltipComponents.add(
                 Component.translatable("item.simplest_watering_can.watering_can.tooltip.water",
                                 water, MAX_WATER)
-                        .withStyle(water > 0 ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY)
-        );
+                        .withStyle(water > 0 ? ChatFormatting.AQUA : ChatFormatting.DARK_GRAY));
 
         tooltipComponents.add(
                 Component.translatable("item.simplest_watering_can.watering_can.tooltip.bonemeal",
                                 bonemeal, MAX_BONEMEAL)
-                        .withStyle(bonemeal > 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY)
-        );
+                        .withStyle(bonemeal > 0 ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
     }
 }
