@@ -100,18 +100,38 @@ public class WateringCanItem extends Item {
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        HitResult hit = level.clip(new net.minecraft.world.level.ClipContext(
-                player.getEyePosition(),
-                player.getEyePosition().add(player.getLookAngle().scale(5.0)),
+
+        net.minecraft.world.phys.Vec3 eyePos = player.getEyePosition();
+        net.minecraft.world.phys.Vec3 endPos = eyePos.add(player.getLookAngle().scale(5.0));
+
+        // Raycast для жидкостей
+        HitResult fluidHit = level.clip(new ClipContext(
+                eyePos, endPos,
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.SOURCE_ONLY,
-                player
-        ));
+                player));
 
-        if (!(hit instanceof BlockHitResult blockHit))
+        // Raycast для блоков
+        HitResult blockHit = level.clip(new ClipContext(
+                eyePos, endPos,
+                ClipContext.Block.OUTLINE,
+                ClipContext.Fluid.NONE,
+                player));
+
+        // Берём ближайшее
+        HitResult hit = fluidHit;
+        if (fluidHit.getType() == HitResult.Type.MISS) {
+            hit = blockHit;
+        } else if (blockHit.getType() != HitResult.Type.MISS) {
+            double distFluid = fluidHit.getLocation().distanceToSqr(eyePos);
+            double distBlock = blockHit.getLocation().distanceToSqr(eyePos);
+            hit = distFluid <= distBlock ? fluidHit : blockHit;
+        }
+
+        if (!(hit instanceof BlockHitResult blockHit2))
             return InteractionResult.FAIL;
 
-        BlockPos targetPos = blockHit.getBlockPos();
+        BlockPos targetPos = blockHit2.getBlockPos();
 
         // ── Заправка водой ────────────────────────────────────────────────
         FluidState fluid = level.getFluidState(targetPos);
@@ -184,9 +204,7 @@ public class WateringCanItem extends Item {
                     }
                 }
                 if (moisturized == 0) return InteractionResult.FAIL;
-                if (hasBone) {
-                    setWater(stack, getWater(stack) - 1);
-                }
+                setWater(stack, getWater(stack) - 1);
                 setLastUsed(stack, level.getGameTime());
                 level.playSound(null, targetPos,SoundEvents.WATER_AMBIENT,
                         SoundSource.BLOCKS, 0.6f, 1.2f);
