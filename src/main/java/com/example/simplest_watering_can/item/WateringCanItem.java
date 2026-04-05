@@ -24,7 +24,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseFireBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BonemealableBlock;
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.FluidState;
@@ -140,10 +140,10 @@ public class WateringCanItem extends Item {
                 setWater(stack, MAX_WATER);
                 level.playSound(player, player.blockPosition(),
                         SoundEvents.BUCKET_FILL, SoundSource.PLAYERS, 1.0f, 1.0f);
-                if (!level.isClientSide()) {
-                    player.displayClientMessage(
+                if (level.isClientSide()) {
+                    net.minecraft.client.Minecraft.getInstance().gui.setOverlayMessage(
                             Component.translatable("item.simplest_watering_can.watering_can.filled")
-                                    .withStyle(ChatFormatting.AQUA), true);
+                                    .withStyle(ChatFormatting.AQUA), false);
                 }
                 return InteractionResult.SUCCESS;
             }
@@ -152,10 +152,10 @@ public class WateringCanItem extends Item {
 
         // ── Нет воды ──────────────────────────────────────────────────────
         if (getWater(stack) <= 0) {
-            if (!level.isClientSide()) {
-                player.displayClientMessage(
+            if (level.isClientSide()) {
+                net.minecraft.client.Minecraft.getInstance().gui.setOverlayMessage(
                         Component.translatable("item.simplest_watering_can.watering_can.tooltip.empty")
-                                .withStyle(ChatFormatting.RED), true);
+                                .withStyle(ChatFormatting.RED), false);
             }
             return InteractionResult.FAIL;
         }
@@ -169,7 +169,7 @@ public class WateringCanItem extends Item {
 
         // ── Увлажнение пашни 3x3 ──────────────────────────────────────────────
         BlockState targetState = level.getBlockState(targetPos);
-        boolean isFarmLand = targetState.getBlock() instanceof FarmBlock;
+        boolean isFarmLand = targetState.getBlock() instanceof FarmlandBlock;
         boolean isFire = targetState.getBlock() instanceof BaseFireBlock
                 || targetState.is(Blocks.CAMPFIRE)
                 || targetState.is(Blocks.SOUL_CAMPFIRE);
@@ -177,13 +177,13 @@ public class WateringCanItem extends Item {
         BlockState belowState = level.getBlockState(targetPos.below());
         if (targetState.getBlock() instanceof BonemealableBlock b
                 && b.isValidBonemealTarget(level, targetPos, targetState)
-                && belowState.getBlock() instanceof FarmBlock) {
+                && belowState.getBlock() instanceof FarmlandBlock) {
             isCrop = true;
         }
         if (!isFarmLand && !isFire && !isCrop) {
             return InteractionResult.FAIL;
         }
-        if (targetState.getBlock() instanceof FarmBlock) {
+        if (targetState.getBlock() instanceof FarmlandBlock) {
             if (!level.isClientSide()) {
                 boolean hasBone = getBonemeal(stack) > 0;
                 int moisturized = 0;
@@ -191,7 +191,7 @@ public class WateringCanItem extends Item {
                     for (int dz = -RADIUS; dz <= RADIUS; dz++) {
                         BlockPos pos = targetPos.offset(dx, 0, dz);
                         BlockState state = level.getBlockState(pos);
-                        if (state.getBlock() instanceof FarmBlock) {
+                        if (state.getBlock() instanceof FarmlandBlock) {
                             level.setBlock(pos,
                                     state.setValue(BlockStateProperties.MOISTURE, 7), 3);
                             moisturized++;
@@ -258,8 +258,8 @@ public class WateringCanItem extends Item {
                     hasAnyCrop = true;
                     if (!hasBonemeal) continue;
 
-                    if (serverLevel.random.nextFloat() < GROW_CHANCE) {
-                        bonemealable.performBonemeal(serverLevel, serverLevel.random, pos, state);
+                    if (serverLevel.getRandom().nextFloat() < GROW_CHANCE) {
+                        bonemealable.performBonemeal(serverLevel, serverLevel.getRandom(), pos, state);
                         anyGrew = true;
                         serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER,
                                 pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5,
