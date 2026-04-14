@@ -22,7 +22,7 @@ license="${mod_license}"
 modId="simplest_watering_can" #mandatory
 
 # The version number of the mod
-version="1.0.0" #mandatory
+version="1.1.0" #mandatory
 
 # A display name for the mod
 displayName="Simplest Watering Can" #mandatory

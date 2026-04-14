@@ -246,11 +246,22 @@ public class WateringCanItem extends Item {
             boolean hasBonemeal = bonemealInCan > 0;
             boolean hasAnyCrop  = false;
             boolean anyGrew     = false;
+            boolean anyMoisturized = false; // Флаг для проверки увлажнения
 
             for (int dx = -RADIUS; dx <= RADIUS; dx++) {
                 for (int dz = -RADIUS; dz <= RADIUS; dz++) {
                     BlockPos pos = targetPos.offset(dx, 0, dz);
                     BlockState state = serverLevel.getBlockState(pos);
+
+                    // --- НАЧАЛО ВСТАВКИ: Увлажняем блок под растением ---
+                    BlockPos belowPos = pos.below();
+                    belowState = serverLevel.getBlockState(belowPos);
+                    if (belowState.getBlock() instanceof FarmlandBlock) {
+                        serverLevel.setBlock(belowPos,
+                                belowState.setValue(BlockStateProperties.MOISTURE, 7), 3);
+                        anyMoisturized = true;
+                    }
+                    // --- КОНЕЦ ВСТАВКИ ---
 
                     if (!(state.getBlock() instanceof BonemealableBlock bonemealable)) continue;
                     if (!bonemealable.isValidBonemealTarget(serverLevel, pos, state)) continue;
@@ -272,15 +283,14 @@ public class WateringCanItem extends Item {
                 }
             }
 
-            if (!hasAnyCrop) return InteractionResult.FAIL;
+            // Тратим воду, если увлажнили землю ИЛИ полили растение
+            if (!hasAnyCrop && !anyMoisturized) return InteractionResult.FAIL;
 
             setWater(stack, getWater(stack) - 1);
             if (hasBonemeal && anyGrew) setBonemeal(stack, bonemealInCan - 1);
             setLastUsed(stack, level.getGameTime());
             level.playSound(null, targetPos, SoundEvents.WATER_AMBIENT,
                     SoundSource.BLOCKS, 0.8f, 1.1f);
-
-        } else {
         }
 
         return InteractionResult.SUCCESS;
